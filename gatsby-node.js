@@ -43,16 +43,6 @@ exports.createSchemaCustomization = (gatsbyUtils, pluginOptions) => {
 
     actions.createTypes([RemoteImageType]);
   }
-
-  // if (pluginOptions.mode === 'cdn') {
-  //   actions.createTypes([
-  //     `
-  //   type RemoteImageFile implements Node {
-  //     url: String!
-  //   }
-  // `,
-  //   ]);
-  // }
 };
 
 exports.onCreateNode = async (
@@ -213,7 +203,7 @@ async function createImageNode(url, node, options, reporter, silent) {
         height: metadata.height,
         width: metadata.width,
         mimeType: metadata.mime,
-        filename: node.id + '.jpg',
+        filename: fileNodeId + '.jpg',
         internal: {
           type: 'RemoteImageFile',
           contentDigest: node.internal.contentDigest,
@@ -302,11 +292,16 @@ exports.createResolvers = ({ cache, createResolvers }, options) => {
     type = 'object',
   } = options;
 
+  let imageNodeType = 'File';
+  if (mode === 'cdn') {
+    imageNodeType = 'RemoteImageFile';
+  }
+
   if (type === 'array' || imagePath.includes('[].')) {
     const resolvers = {
       [nodeType]: {
         [name]: {
-          type: '[File]',
+          type: `[${imageNodeType}]`,
           resolve: async (source, _, context) => {
             const fileNodeMap = await cache.get(
               getCacheKeyForNodeId(source.id)
@@ -330,7 +325,7 @@ exports.createResolvers = ({ cache, createResolvers }, options) => {
     const resolvers = {
       [nodeType]: {
         [name]: {
-          type: mode === 'cdn' ? 'RemoteImageFile' : 'File',
+          type: imageNodeType,
           resolve: async (source, _, context) => {
             const fileNodeMap = await cache.get(
               getCacheKeyForNodeId(source.id)
